@@ -8,29 +8,7 @@ import { app, BrowserWindow, dialog } from "electron"
 import { OpenAI } from "openai"
 import { configHelper } from "./ConfigHelper"
 import Anthropic from '@anthropic-ai/sdk';
-
-// Interface for Gemini API requests
-interface GeminiMessage {
-  role: string;
-  parts: Array<{
-    text?: string;
-    inlineData?: {
-      mimeType: string;
-      data: string;
-    }
-  }>;
-}
-
-interface GeminiResponse {
-  candidates: Array<{
-    content: {
-      parts: Array<{
-        text: string;
-      }>;
-    };
-    finishReason: string;
-  }>;
-}
+import { GoogleGenAI } from "@google/genai";
 interface AnthropicMessage {
   role: 'user' | 'assistant';
   content: Array<{
@@ -47,7 +25,7 @@ export class ProcessingHelper {
   private deps: IProcessingHelperDeps
   private screenshotHelper: ScreenshotHelper
   private openaiClient: OpenAI | null = null
-  private geminiApiKey: string | null = null
+  private geminiClient: GoogleGenAI | null = null
   private anthropicClient: Anthropic | null = null
 
   // AbortControllers for API requests
@@ -81,12 +59,12 @@ export class ProcessingHelper {
             timeout: 60000, // 60 second timeout
             maxRetries: 2   // Retry up to 2 times
           });
-          this.geminiApiKey = null;
+          this.geminiClient = null;
           this.anthropicClient = null;
           console.log("OpenAI client initialized successfully");
         } else {
           this.openaiClient = null;
-          this.geminiApiKey = null;
+          this.geminiClient = null;
           this.anthropicClient = null;
           console.warn("No API key available, OpenAI client not initialized");
         }
@@ -95,18 +73,20 @@ export class ProcessingHelper {
         this.openaiClient = null;
         this.anthropicClient = null;
         if (config.apiKey) {
-          this.geminiApiKey = config.apiKey;
-          console.log("Gemini API key set successfully");
+          this.geminiClient = new GoogleGenAI({
+            apiKey: config.apiKey,
+          });
+          console.log("Gemini client initialized successfully");
         } else {
           this.openaiClient = null;
-          this.geminiApiKey = null;
+          this.geminiClient = null;
           this.anthropicClient = null;
           console.warn("No API key available, Gemini client not initialized");
         }
       } else if (config.apiProvider === "anthropic") {
         // Reset other clients
         this.openaiClient = null;
-        this.geminiApiKey = null;
+        this.geminiClient = null;
         if (config.apiKey) {
           this.anthropicClient = new Anthropic({
             apiKey: config.apiKey,
@@ -116,7 +96,7 @@ export class ProcessingHelper {
           console.log("Anthropic client initialized successfully");
         } else {
           this.openaiClient = null;
-          this.geminiApiKey = null;
+          this.geminiClient = null;
           this.anthropicClient = null;
           console.warn("No API key available, Anthropic client not initialized");
         }
@@ -124,7 +104,7 @@ export class ProcessingHelper {
     } catch (error) {
       console.error("Failed to initialize AI client:", error);
       this.openaiClient = null;
-      this.geminiApiKey = null;
+      this.geminiClient = null;
       this.anthropicClient = null;
     }
   }
@@ -213,11 +193,11 @@ export class ProcessingHelper {
         );
         return;
       }
-    } else if (config.apiProvider === "gemini" && !this.geminiApiKey) {
+    } else if (config.apiProvider === "gemini" && !this.geminiClient) {
       this.initializeAIClient();
       
-      if (!this.geminiApiKey) {
-        console.error("Gemini API key not initialized");
+      if (!this.geminiClient) {
+        console.error("Gemini client not initialized");
         mainWindow.webContents.send(
           this.deps.PROCESSING_EVENTS.API_KEY_INVALID
         );
@@ -477,14 +457,14 @@ export class ProcessingHelper {
         const messages = [
           {
             role: "system" as const, 
-            content: "You are a coding challenge interpreter. Analyze the screenshot of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output. Just return the structured JSON without any other text."
+            content: "You are a coding challenge interpreter. Analyze the screenshot of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem). Just return the structured JSON without any other text."
           },
           {
             role: "user" as const,
             content: [
               {
                 type: "text" as const, 
-                text: `Extract the coding problem details from these screenshots. Return in JSON format. Preferred coding language we gonna use for this problem is ${language}.`
+                text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt. Return in JSON format with fields: problem_statement, constraints, example_input, example_output, ideal_solution (code that attempts to solve the problem). Preferred coding language we gonna use for this problem is ${language}.`
               },
               ...imageDataList.map(data => ({
                 type: "image_url" as const,
@@ -517,52 +497,38 @@ export class ProcessingHelper {
         }
       } else if (config.apiProvider === "gemini")  {
         // Use Gemini API
-        if (!this.geminiApiKey) {
+        if (!this.geminiClient) {
           return {
             success: false,
-            error: "Gemini API key not configured. Please check your settings."
+            error: "Gemini client not configured. Please check your settings."
           };
         }
 
         try {
-          // Create Gemini message structure
-          const geminiMessages: GeminiMessage[] = [
+          // Create message content with text and images
+          const contents = [
             {
-              role: "user",
-              parts: [
-                {
-                  text: `You are a coding challenge interpreter. Analyze the screenshots of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output. Just return the structured JSON without any other text. Preferred coding language we gonna use for this problem is ${language}.`
-                },
-                ...imageDataList.map(data => ({
-                  inlineData: {
-                    mimeType: "image/png",
-                    data: data
-                  }
-                }))
-              ]
-            }
+              text: `You are a coding challenge interpreter. Analyze the screenshots of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem). Just return the structured JSON without any other text. Preferred coding language we gonna use for this problem is ${language}.`
+            },
+            ...imageDataList.map(data => ({
+              inlineData: {
+                mimeType: "image/png",
+                data: data
+              }
+            }))
           ];
 
-          // Make API request to Gemini
-          const response = await axios.default.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${config.extractionModel || "gemini-2.0-flash"}:generateContent?key=${this.geminiApiKey}`,
-            {
-              contents: geminiMessages,
-              generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 4000
-              }
-            },
-            { signal }
-          );
+          // Make API request to Gemini using new SDK
+          const response = await this.geminiClient.models.generateContent({
+            model: config.extractionModel || "gemini-2.5-flash",
+            contents,
+          });
 
-          const responseData = response.data as GeminiResponse;
+          const responseText = response.text;
           
-          if (!responseData.candidates || responseData.candidates.length === 0) {
+          if (!responseText) {
             throw new Error("Empty response from Gemini API");
           }
-          
-          const responseText = responseData.candidates[0].content.parts[0].text;
           
           // Handle when Gemini might wrap the JSON in markdown code blocks
           const jsonText = responseText.replace(/```json|```/g, '').trim();
@@ -589,7 +555,7 @@ export class ProcessingHelper {
               content: [
                 {
                   type: "text" as const,
-                  text: `Extract the coding problem details from these screenshots. Return in JSON format with these fields: problem_statement, constraints, example_input, example_output. Preferred coding language is ${language}.`
+                  text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt. Return in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (code that attempts to solve the problem). Preferred coding language is ${language}.`
                 },
                 ...imageDataList.map(data => ({
                   type: "image" as const,
@@ -787,46 +753,29 @@ Your solution should be efficient, well-commented, and handle edge cases.
         responseContent = solutionResponse.choices[0].message.content;
       } else if (config.apiProvider === "gemini")  {
         // Gemini processing
-        if (!this.geminiApiKey) {
+        if (!this.geminiClient) {
           return {
             success: false,
-            error: "Gemini API key not configured. Please check your settings."
+            error: "Gemini client not configured. Please check your settings."
           };
         }
         
         try {
-          // Create Gemini message structure
-          const geminiMessages = [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `You are an expert coding interview assistant. Provide a clear, optimal solution with detailed explanations for this problem:\n\n${promptText}`
-                }
-              ]
-            }
-          ];
-
-          // Make API request to Gemini
-          const response = await axios.default.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${config.solutionModel || "gemini-2.0-flash"}:generateContent?key=${this.geminiApiKey}`,
-            {
-              contents: geminiMessages,
-              generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 4000
+          // Make API request to Gemini using new SDK
+          const response = await this.geminiClient.models.generateContent({
+            model: config.solutionModel || "gemini-2.5-flash",
+            contents: [
+              {
+                text: `You are an expert coding interview assistant. Provide a clear, optimal solution with detailed explanations for this problem:\n\n${promptText}`
               }
-            },
-            { signal }
-          );
+            ],
+          });
 
-          const responseData = response.data as GeminiResponse;
+          responseContent = response.text;
           
-          if (!responseData.candidates || responseData.candidates.length === 0) {
+          if (!responseContent) {
             throw new Error("Empty response from Gemini API");
           }
-          
-          responseContent = responseData.candidates[0].content.parts[0].text;
         } catch (error) {
           console.error("Error using Gemini API for solution:", error);
           return {
@@ -1075,10 +1024,10 @@ If you include code examples, use proper markdown code blocks with language spec
         
         debugContent = debugResponse.choices[0].message.content;
       } else if (config.apiProvider === "gemini")  {
-        if (!this.geminiApiKey) {
+        if (!this.geminiClient) {
           return {
             success: false,
-            error: "Gemini API key not configured. Please check your settings."
+            error: "Gemini client not configured. Please check your settings."
           };
         }
         
@@ -1107,19 +1056,15 @@ Here provide a clear explanation of why the changes are needed
 If you include code examples, use proper markdown code blocks with language specification (e.g. \`\`\`java).
 `;
 
-          const geminiMessages = [
-            {
-              role: "user",
-              parts: [
-                { text: debugPrompt },
-                ...imageDataList.map(data => ({
-                  inlineData: {
-                    mimeType: "image/png",
-                    data: data
-                  }
-                }))
-              ]
-            }
+          // Create message content with text and images
+          const contents = [
+            { text: debugPrompt },
+            ...imageDataList.map(data => ({
+              inlineData: {
+                mimeType: "image/png",
+                data: data
+              }
+            }))
           ];
 
           if (mainWindow) {
@@ -1129,25 +1074,17 @@ If you include code examples, use proper markdown code blocks with language spec
             });
           }
 
-          const response = await axios.default.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${config.debuggingModel || "gemini-2.0-flash"}:generateContent?key=${this.geminiApiKey}`,
-            {
-              contents: geminiMessages,
-              generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 4000
-              }
-            },
-            { signal }
-          );
+          // Make API request to Gemini using new SDK
+          const response = await this.geminiClient.models.generateContent({
+            model: config.debuggingModel || "gemini-2.5-flash",
+            contents,
+          });
 
-          const responseData = response.data as GeminiResponse;
+          debugContent = response.text;
           
-          if (!responseData.candidates || responseData.candidates.length === 0) {
+          if (!debugContent) {
             throw new Error("Empty response from Gemini API");
           }
-          
-          debugContent = responseData.candidates[0].content.parts[0].text;
         } catch (error) {
           console.error("Error using Gemini API for debugging:", error);
           return {

@@ -511,10 +511,33 @@ const Solutions: React.FC<SolutionsProps> = ({
                       content={problemStatementData?.problem_statement}
                       isLoading={!problemStatementData}
                     />
+                    {problemStatementData?.ideal_solution && (
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-semibold text-blue-300">Ideal Solution?</h3>
+                        <div className="relative">
+                          <SyntaxHighlighter
+                            language={currentLanguage === "golang" ? "go" : currentLanguage}
+                            style={dracula}
+                            customStyle={{
+                              maxWidth: "100%",
+                              margin: 0,
+                              padding: "1rem",
+                              fontSize: "0.75rem",
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-all",
+                              backgroundColor: "rgba(22, 27, 34, 0.5)"
+                            }}
+                            wrapLongLines={true}
+                          >
+                            {problemStatementData.ideal_solution}
+                          </SyntaxHighlighter>
+                        </div>
+                      </div>
+                    )}
                     {problemStatementData && (
                       <div className="mt-4 flex">
                         <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-                          Generating solutions...
+                          Generating detailed solution...
                         </p>
                       </div>
                     )}
