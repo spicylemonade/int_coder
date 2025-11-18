@@ -235,7 +235,8 @@ async function createWindow(): Promise<void> {
     paintWhenInitiallyHidden: true,
     titleBarStyle: "hidden",
     enableLargerThanScreen: true,
-    movable: true
+    movable: true,
+    contentProtection: true  // Prevents screen capture by browser-based tools
   }
 
   state.mainWindow = new BrowserWindow(windowSettings)
