@@ -5,7 +5,6 @@
   "scripts": {
     "clean": "npx rimraf dist dist-electron",
     "dev": "cross-env NODE_ENV=development npm run clean && concurrently \"tsc -w -p tsconfig.electron.json\" \"vite\" \"wait-on -t 30000 http://localhost:54321 && electron ./dist-electron/main.js\"",
-    "dev:discord": "cross-env NODE_ENV=development DISCORD_MODE=true npm run clean && cross-env NODE_ENV=development DISCORD_MODE=true concurrently \"tsc -w -p tsconfig.electron.json\" \"vite\" \"wait-on -t 30000 http://localhost:54321 && cross-env DISCORD_MODE=true electron ./dist-electron/main.js\"",
     "test": "echo \"No tests defined. Please contribute if you like\" && exit 0",
     "lint": "npx eslint .",
     "start": "cross-env NODE_ENV=development concurrently \"tsc -p tsconfig.electron.json\" \"vite\" \"wait-on -t 30000 http://localhost:54321 && electron ./dist-electron/main.js\"",
@@ -155,8 +154,7 @@
     "screenshot-desktop": "^1.15.0",
     "tailwind-merge": "^2.5.5",
     "utf-8-validate": "^6.0.5",
-    "uuid": "^11.0.3",
-    "zlib-sync": "^0.1.10"
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@electron/typescript-definitions": "^8.14.0",
