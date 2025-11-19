@@ -11,6 +11,7 @@ export interface SolutionsResponse {
 
 export interface ProblemStatementData {
   problem_statement: string
+  quick_plan?: string
   ideal_solution?: string
   input_format: {
     description: string

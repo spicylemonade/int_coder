@@ -457,14 +457,14 @@ export class ProcessingHelper {
         const messages = [
           {
             role: "system" as const, 
-            content: "You are a coding challenge interpreter. Analyze the screenshot of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem with clear comments explaining what each part does). Just return the structured JSON without any other text."
+            content: "You are a coding challenge interpreter. Analyze the screenshot of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, quick_plan (a brief 2-3 sentence strategy/approach for solving this problem). Just return the structured JSON without any other text."
           },
           {
             role: "user" as const,
             content: [
               {
                 type: "text" as const, 
-                text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt with helpful comments. Return in JSON format with fields: problem_statement, constraints, example_input, example_output, ideal_solution (well-commented code that attempts to solve the problem - add comments to explain what the code is doing). Preferred coding language we gonna use for this problem is ${language}.`
+                text: `Extract the coding problem details from these screenshots and provide a quick approach plan. Return in JSON format with fields: problem_statement, constraints, example_input, example_output, quick_plan (brief strategy for solving). Preferred coding language we gonna use for this problem is ${language}.`
               },
               ...imageDataList.map(data => ({
                 type: "image_url" as const,
@@ -508,7 +508,7 @@ export class ProcessingHelper {
           // Create message content with text and images
           const contents = [
             {
-              text: `You are a coding challenge interpreter. Analyze the screenshots of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem with clear comments explaining what each part does). Make sure the ideal_solution code includes helpful comments so the user knows what the code is doing. Just return the structured JSON without any other text. Preferred coding language we gonna use for this problem is ${language}.`
+              text: `You are a coding challenge interpreter. Analyze the screenshots of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, quick_plan (a brief 2-3 sentence strategy/approach for solving this problem). Just return the structured JSON without any other text. Preferred coding language we gonna use for this problem is ${language}.`
             },
             ...imageDataList.map(data => ({
               inlineData: {
@@ -567,7 +567,7 @@ export class ProcessingHelper {
               content: [
                 {
                   type: "text" as const,
-                  text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt with helpful comments. Return in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (well-commented code that attempts to solve the problem - add comments to explain what the code is doing). Preferred coding language is ${language}.`
+                  text: `Extract the coding problem details from these screenshots and provide a quick approach plan. Return in JSON format with these fields: problem_statement, constraints, example_input, example_output, quick_plan (brief 2-3 sentence strategy for solving). Preferred coding language is ${language}.`
                 },
                 ...imageDataList.map(data => ({
                   type: "image" as const,
@@ -764,7 +764,7 @@ Your solution should be efficient, well-commented, and handle edge cases.
 
         responseContent = solutionResponse.choices[0].message.content;
       } else if (config.apiProvider === "gemini")  {
-        // Gemini processing
+        // Gemini processing - call BOTH models in parallel
         if (!this.geminiClient) {
           return {
             success: false,
@@ -773,29 +773,46 @@ Your solution should be efficient, well-commented, and handle edge cases.
         }
         
         try {
-          // Make API request to Gemini using new SDK
-          const modelToUse = config.solutionModel || "gemini-2.5-flash";
-          const requestConfig: any = {
-            model: modelToUse,
+          // Prepare requests for both models
+          const flashRequest = {
+            model: "gemini-2.5-flash",
             contents: [
               {
-                text: `You are an expert coding interview assistant. Provide a clear, optimal solution with detailed explanations for this problem:\n\n${promptText}`
+                text: `You are an expert coding interview assistant. Provide a quick, working solution with comments for this problem:\n\n${promptText}`
+              }
+            ],
+            config: {
+              thinkingConfig: {
+                thinkingBudget: 0, // Disable thinking for faster responses
+              },
+            },
+          };
+          
+          const proRequest = {
+            model: "gemini-3-pro-preview",
+            contents: [
+              {
+                text: `You are an expert coding interview assistant. Provide a comprehensive, optimal solution with detailed explanations for this problem:\n\n${promptText}`
               }
             ],
           };
           
-          // For gemini-2.5-flash, disable thinking to make it faster
-          if (modelToUse === "gemini-2.5-flash") {
-            requestConfig.config = {
-              thinkingConfig: {
-                thinkingBudget: 0, // Disable thinking for faster responses
-              },
-            };
-          }
+          // Call both models in parallel
+          const [flashResponse, proResponse] = await Promise.all([
+            this.geminiClient.models.generateContent(flashRequest),
+            this.geminiClient.models.generateContent(proRequest)
+          ]);
           
-          const response = await this.geminiClient.models.generateContent(requestConfig);
-
-          responseContent = response.text;
+          const flashContent = flashResponse.text;
+          const proContent = proResponse.text;
+          
+          // Use the Pro response as the main response, but store Flash for ideal_solution
+          responseContent = proContent;
+          
+          // Store the Flash response in problemInfo for display as "Ideal Solution"
+          if (this.deps.getProblemInfo()) {
+            this.deps.getProblemInfo().ideal_solution = flashContent;
+          }
           
           if (!responseContent) {
             throw new Error("Empty response from Gemini API");

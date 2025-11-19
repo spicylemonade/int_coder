@@ -511,33 +511,18 @@ const Solutions: React.FC<SolutionsProps> = ({
                       content={problemStatementData?.problem_statement}
                       isLoading={!problemStatementData}
                     />
-                    {problemStatementData?.ideal_solution && (
+                    {problemStatementData?.quick_plan && (
                       <div className="space-y-2">
-                        <h3 className="text-sm font-semibold text-blue-300">Ideal Solution?</h3>
-                        <div className="relative">
-                          <SyntaxHighlighter
-                            language={currentLanguage === "golang" ? "go" : currentLanguage}
-                            style={dracula}
-                            customStyle={{
-                              maxWidth: "100%",
-                              margin: 0,
-                              padding: "1rem",
-                              fontSize: "0.75rem",
-                              whiteSpace: "pre-wrap",
-                              wordBreak: "break-all",
-                              backgroundColor: "rgba(22, 27, 34, 0.5)"
-                            }}
-                            wrapLongLines={true}
-                          >
-                            {problemStatementData.ideal_solution}
-                          </SyntaxHighlighter>
-                        </div>
+                        <h3 className="text-sm font-semibold text-green-300">Quick Plan</h3>
+                        <p className="text-xs text-gray-200 leading-relaxed">
+                          {problemStatementData.quick_plan}
+                        </p>
                       </div>
                     )}
                     {problemStatementData && (
                       <div className="mt-4 flex">
                         <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-                          Generating detailed solution...
+                          Generating solutions from both Gemini 2.5 Flash and 3.0 Pro...
                         </p>
                       </div>
                     )}
@@ -568,8 +553,32 @@ const Solutions: React.FC<SolutionsProps> = ({
                       isLoading={!thoughtsData}
                     />
 
+                    {problemStatementData?.ideal_solution && (
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-semibold text-yellow-300">⚡ Quick Solution (Gemini 2.5 Flash)</h3>
+                        <div className="relative">
+                          <SyntaxHighlighter
+                            language={currentLanguage === "golang" ? "go" : currentLanguage}
+                            style={dracula}
+                            customStyle={{
+                              maxWidth: "100%",
+                              margin: 0,
+                              padding: "1rem",
+                              fontSize: "0.75rem",
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-all",
+                              backgroundColor: "rgba(22, 27, 34, 0.5)"
+                            }}
+                            wrapLongLines={true}
+                          >
+                            {problemStatementData.ideal_solution}
+                          </SyntaxHighlighter>
+                        </div>
+                      </div>
+                    )}
+
                     <SolutionSection
-                      title="Solution"
+                      title="🎯 Final Solution (Gemini 3.0 Pro)"
                       content={solutionData}
                       isLoading={!solutionData}
                       currentLanguage={currentLanguage}
