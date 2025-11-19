@@ -395,9 +395,16 @@ function hideMainWindow(): void {
     state.windowPosition = { x: bounds.x, y: bounds.y };
     state.windowSize = { width: bounds.width, height: bounds.height };
     state.mainWindow.setIgnoreMouseEvents(true, { forward: true });
-    state.mainWindow.setOpacity(0);
+    // On macOS, keep window visible but click-through (ghost mode)
+    // On other platforms, make it invisible
+    if (process.platform === 'darwin') {
+      state.mainWindow.setOpacity(0.3); // Semi-transparent on Mac for visibility
+      console.log('Window in ghost mode (Mac), opacity set to 0.3, click-through enabled');
+    } else {
+      state.mainWindow.setOpacity(0); // Invisible on other platforms
+      console.log('Window hidden, opacity set to 0');
+    }
     state.isWindowVisible = false;
-    console.log('Window hidden, opacity set to 0');
   }
 }
 
