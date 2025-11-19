@@ -519,10 +519,22 @@ export class ProcessingHelper {
           ];
 
           // Make API request to Gemini using new SDK
-          const response = await this.geminiClient.models.generateContent({
-            model: config.extractionModel || "gemini-2.5-flash",
+          const modelToUse = config.extractionModel || "gemini-2.5-flash";
+          const requestConfig: any = {
+            model: modelToUse,
             contents,
-          });
+          };
+          
+          // For gemini-2.5-flash, disable thinking to make it faster
+          if (modelToUse === "gemini-2.5-flash") {
+            requestConfig.config = {
+              thinkingConfig: {
+                thinkingBudget: 0, // Disable thinking for faster responses
+              },
+            };
+          }
+          
+          const response = await this.geminiClient.models.generateContent(requestConfig);
 
           const responseText = response.text;
           
@@ -762,14 +774,26 @@ Your solution should be efficient, well-commented, and handle edge cases.
         
         try {
           // Make API request to Gemini using new SDK
-          const response = await this.geminiClient.models.generateContent({
-            model: config.solutionModel || "gemini-2.5-flash",
+          const modelToUse = config.solutionModel || "gemini-2.5-flash";
+          const requestConfig: any = {
+            model: modelToUse,
             contents: [
               {
                 text: `You are an expert coding interview assistant. Provide a clear, optimal solution with detailed explanations for this problem:\n\n${promptText}`
               }
             ],
-          });
+          };
+          
+          // For gemini-2.5-flash, disable thinking to make it faster
+          if (modelToUse === "gemini-2.5-flash") {
+            requestConfig.config = {
+              thinkingConfig: {
+                thinkingBudget: 0, // Disable thinking for faster responses
+              },
+            };
+          }
+          
+          const response = await this.geminiClient.models.generateContent(requestConfig);
 
           responseContent = response.text;
           
@@ -1075,10 +1099,22 @@ If you include code examples, use proper markdown code blocks with language spec
           }
 
           // Make API request to Gemini using new SDK
-          const response = await this.geminiClient.models.generateContent({
-            model: config.debuggingModel || "gemini-2.5-flash",
+          const modelToUse = config.debuggingModel || "gemini-2.5-flash";
+          const requestConfig: any = {
+            model: modelToUse,
             contents,
-          });
+          };
+          
+          // For gemini-2.5-flash, disable thinking to make it faster
+          if (modelToUse === "gemini-2.5-flash") {
+            requestConfig.config = {
+              thinkingConfig: {
+                thinkingBudget: 0, // Disable thinking for faster responses
+              },
+            };
+          }
+          
+          const response = await this.geminiClient.models.generateContent(requestConfig);
 
           debugContent = response.text;
           
