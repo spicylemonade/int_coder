@@ -792,7 +792,21 @@ Your solution should be efficient, well-commented, and handle edge cases.
             model: "gemini-3-pro-preview",
             contents: [
               {
-                text: `You are an expert coding interview assistant. Provide a comprehensive, optimal solution with detailed explanations for this problem:\n\n${promptText}`
+                text: `You are an expert coding interview assistant. Provide a comprehensive, optimal solution for this problem. 
+
+CRITICAL: Add a comment after ALMOST EVERY LINE of code explaining what that line does. Your code should be extremely well-documented with inline comments throughout.
+
+Include detailed comments explaining:
+- What each line/section does
+- Why you chose this approach
+- Time/space complexity considerations
+- Edge cases being handled
+- Any important algorithmic insights
+- Variable purposes and meanings
+
+Make your comments thorough, educational, and frequent. A beginner should be able to understand every step by reading your comments.
+
+${promptText}`
               }
             ],
           };
