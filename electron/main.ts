@@ -388,45 +388,24 @@ function handleWindowClosed(): void {
   state.windowSize = null
 }
 
-// Window visibility functions
+// Window visibility functions - now just toggles click-through mode
 function hideMainWindow(): void {
   if (!state.mainWindow?.isDestroyed()) {
-    const bounds = state.mainWindow.getBounds();
-    state.windowPosition = { x: bounds.x, y: bounds.y };
-    state.windowSize = { width: bounds.width, height: bounds.height };
+    // Enable click-through mode - you can click through to apps behind
     state.mainWindow.setIgnoreMouseEvents(true, { forward: true });
-    // On macOS, keep window visible but click-through (ghost mode)
-    // On other platforms, make it invisible
-    if (process.platform === 'darwin') {
-      state.mainWindow.setOpacity(0.3); // Semi-transparent on Mac for visibility
-      console.log('Window in ghost mode (Mac), opacity set to 0.3, click-through enabled');
-    } else {
-      state.mainWindow.setOpacity(0); // Invisible on other platforms
-      console.log('Window hidden, opacity set to 0');
-    }
+    // Window stays fully visible at 100% opacity
+    console.log('Click-through mode enabled - you can click through to apps behind');
     state.isWindowVisible = false;
   }
 }
 
 function showMainWindow(): void {
   if (!state.mainWindow?.isDestroyed()) {
-    if (state.windowPosition && state.windowSize) {
-      state.mainWindow.setBounds({
-        ...state.windowPosition,
-        ...state.windowSize
-      });
-    }
+    // Disable click-through mode - you can interact with the overlay
     state.mainWindow.setIgnoreMouseEvents(false);
     state.mainWindow.setAlwaysOnTop(true, "screen-saver", 1);
-    state.mainWindow.setVisibleOnAllWorkspaces(true, {
-      visibleOnFullScreen: true
-    });
-    state.mainWindow.setContentProtection(true);
-    state.mainWindow.setOpacity(0); // Set opacity to 0 before showing
-    state.mainWindow.showInactive(); // Use showInactive instead of show+focus
-    state.mainWindow.setOpacity(1); // Then set opacity to 1 after showing
+    console.log('Interactive mode enabled - you can interact with the overlay');
     state.isWindowVisible = true;
-    console.log('Window shown with showInactive(), opacity set to 1');
   }
 }
 
