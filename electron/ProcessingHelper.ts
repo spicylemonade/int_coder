@@ -625,6 +625,14 @@ export class ProcessingHelper {
       // Store problem info in AppState
       this.deps.setProblemInfo(problemInfo);
 
+      // Send to Discord if in Discord mode
+      if (this.deps.isDiscordMode()) {
+        const discordHelper = this.deps.getDiscordHelper();
+        if (discordHelper) {
+          await discordHelper.sendProblemExtracted(problemInfo);
+        }
+      }
+
       // Send first success event
       if (mainWindow) {
         mainWindow.webContents.send(
@@ -643,6 +651,21 @@ export class ProcessingHelper {
             message: "Solution generated successfully",
             progress: 100
           });
+          
+          // Send to Discord if in Discord mode
+          if (this.deps.isDiscordMode()) {
+            const discordHelper = this.deps.getDiscordHelper();
+            const config = configHelper.loadConfig();
+            if (discordHelper && solutionsResult.data) {
+              await discordHelper.sendProSolution({
+                code: solutionsResult.data.code,
+                thoughts: solutionsResult.data.thoughts,
+                time_complexity: solutionsResult.data.time_complexity,
+                space_complexity: solutionsResult.data.space_complexity,
+                language: config.language || 'python'
+              });
+            }
+          }
           
           mainWindow.webContents.send(
             this.deps.PROCESSING_EVENTS.SOLUTION_SUCCESS,
@@ -822,6 +845,16 @@ ${promptText}`
           // Store Flash solution and notify UI immediately
           if (this.deps.getProblemInfo()) {
             this.deps.getProblemInfo().ideal_solution = flashContent;
+            
+            // Send to Discord if in Discord mode
+            if (this.deps.isDiscordMode()) {
+              const discordHelper = this.deps.getDiscordHelper();
+              const config = configHelper.loadConfig();
+              if (discordHelper) {
+                await discordHelper.sendFlashSolution(flashContent, config.language || 'python');
+              }
+            }
+            
             // Send flash solution to UI right away
             if (mainWindow) {
               mainWindow.webContents.send("flash-solution-ready", { 

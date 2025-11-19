@@ -7,10 +7,26 @@ import { ScreenshotHelper } from "./ScreenshotHelper"
 import { ShortcutsHelper } from "./shortcuts"
 import { initAutoUpdater } from "./autoUpdater"
 import { configHelper } from "./ConfigHelper"
+import { DiscordHelper } from "./DiscordHelper"
 import * as dotenv from "dotenv"
 
 // Constants
 const isDev = process.env.NODE_ENV === "development"
+const isDiscordMode = process.env.DISCORD_MODE === "true"
+
+console.log('🚀 App starting...')
+console.log('📊 NODE_ENV:', process.env.NODE_ENV)
+console.log('📊 DISCORD_MODE env var:', process.env.DISCORD_MODE)
+console.log('📊 isDiscordMode:', isDiscordMode)
+
+// Discord configuration (from environment variables)
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || ""
+const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID || ""
+
+if (isDiscordMode && (!DISCORD_BOT_TOKEN || !DISCORD_CHANNEL_ID)) {
+  console.error('❌ Discord mode enabled but DISCORD_BOT_TOKEN or DISCORD_CHANNEL_ID not set in .env file!')
+  console.error('📝 Please copy .env.example to .env and add your Discord credentials')
+}
 
 // Application State
 const state = {
@@ -29,6 +45,7 @@ const state = {
   screenshotHelper: null as ScreenshotHelper | null,
   shortcutsHelper: null as ShortcutsHelper | null,
   processingHelper: null as ProcessingHelper | null,
+  discordHelper: null as DiscordHelper | null,
 
   // View and state management
   view: "queue" as "queue" | "solutions" | "debug",
@@ -69,6 +86,8 @@ export interface IProcessingHelperDeps {
   ) => Promise<{ success: boolean; error?: string }>
   setHasDebugged: (value: boolean) => void
   getHasDebugged: () => boolean
+  getDiscordHelper: () => DiscordHelper | null
+  isDiscordMode: () => boolean
   PROCESSING_EVENTS: typeof state.PROCESSING_EVENTS
 }
 
@@ -112,6 +131,13 @@ export interface IIpcHandlerDeps {
 // Initialize helpers
 function initializeHelpers() {
   state.screenshotHelper = new ScreenshotHelper(state.view)
+  
+  // Initialize Discord helper if in Discord mode
+  if (isDiscordMode) {
+    console.log('🎮 Discord mode enabled - initializing Discord bot...')
+    state.discordHelper = new DiscordHelper(DISCORD_BOT_TOKEN, DISCORD_CHANNEL_ID)
+  }
+  
   state.processingHelper = new ProcessingHelper({
     getScreenshotHelper,
     getMainWindow,
@@ -127,6 +153,8 @@ function initializeHelpers() {
     deleteScreenshot,
     setHasDebugged,
     getHasDebugged,
+    getDiscordHelper,
+    isDiscordMode: getIsDiscordMode,
     PROCESSING_EVENTS: state.PROCESSING_EVENTS
   } as IProcessingHelperDeps)
   state.shortcutsHelper = new ShortcutsHelper({
@@ -222,28 +250,44 @@ async function createWindow(): Promise<void> {
         : path.join(__dirname, "preload.js"),
       scrollBounce: true
     },
-    show: true,
+    show: false,  // Never show window initially
     frame: false,
     transparent: true,
     fullscreenable: false,
     hasShadow: false,
-    opacity: 1.0,  // Start with full opacity
+    opacity: isDiscordMode ? 0.0 : 1.0,  // Invisible in Discord mode, full opacity otherwise
     backgroundColor: "#00000000",
-    focusable: true,
+    focusable: !isDiscordMode,  // Not focusable in Discord mode
     skipTaskbar: true,
+    alwaysOnTop: !isDiscordMode,  // Only on top in normal mode
     type: "panel",
     paintWhenInitiallyHidden: true,
     titleBarStyle: "hidden",
     enableLargerThanScreen: true,
     movable: true,
-    contentProtection: true  // Prevents screen capture by browser-based tools
+    // contentProtection: true  // Commented out due to TypeScript compatibility
   }
 
   state.mainWindow = new BrowserWindow(windowSettings)
 
+  // In Discord mode, completely hide the window
+  if (isDiscordMode) {
+    state.mainWindow.hide()
+    state.mainWindow.setOpacity(0)
+    state.mainWindow.setBounds({ x: -10000, y: -10000, width: 1, height: 1 })
+    state.mainWindow.setSkipTaskbar(true)
+    console.log('🎮 Discord mode: Window hidden, moved off-screen, no UI loaded')
+  }
+
   // Add more detailed logging for window events
   state.mainWindow.webContents.on("did-finish-load", () => {
     console.log("Window finished loading")
+    // Re-hide in Discord mode after load (in case it showed)
+    if (isDiscordMode && state.mainWindow) {
+      state.mainWindow.hide()
+      state.mainWindow.setOpacity(0)
+      console.log('🎮 Discord mode: Re-hidden window after load')
+    }
   })
   state.mainWindow.webContents.on(
     "did-fail-load",
@@ -261,7 +305,11 @@ async function createWindow(): Promise<void> {
     }
   )
 
-  if (isDev) {
+  if (isDiscordMode) {
+    // In Discord mode, load a blank page - no UI needed
+    console.log('🎮 Discord mode: Loading blank page (no UI)')
+    state.mainWindow.loadURL('data:text/html,<html><body style="background:transparent"></body></html>')
+  } else if (isDev) {
     // In development, load from the dev server
     console.log("Loading from development server: http://localhost:54321")
     state.mainWindow.loadURL("http://localhost:54321").catch((error) => {
@@ -409,6 +457,12 @@ function hideMainWindow(): void {
 }
 
 function showMainWindow(): void {
+  // Don't show window in Discord mode
+  if (isDiscordMode) {
+    console.log('🎮 Discord mode: Skipping window show');
+    return;
+  }
+  
   if (!state.mainWindow?.isDestroyed()) {
     // Disable click-through mode - you can interact with the overlay
     state.mainWindow.setIgnoreMouseEvents(false);
@@ -590,12 +644,14 @@ app.on("open-url", (event, url) => {
 app.on("second-instance", (event, commandLine) => {
   console.log("second-instance event received:", commandLine)
   
-  // Focus or create the main window
-  if (!state.mainWindow) {
-    createWindow()
-  } else {
-    if (state.mainWindow.isMinimized()) state.mainWindow.restore()
-    state.mainWindow.focus()
+  // Focus or create the main window (skip in Discord mode)
+  if (!isDiscordMode) {
+    if (!state.mainWindow) {
+      createWindow()
+    } else {
+      if (state.mainWindow.isMinimized()) state.mainWindow.restore()
+      state.mainWindow.focus()
+    }
   }
 })
 
@@ -612,7 +668,8 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  // Don't show window on activate in Discord mode
+  if (!isDiscordMode && BrowserWindow.getAllWindows().length === 0) {
     createWindow()
   }
 })
@@ -633,6 +690,14 @@ function setView(view: "queue" | "solutions" | "debug"): void {
 
 function getScreenshotHelper(): ScreenshotHelper | null {
   return state.screenshotHelper
+}
+
+function getDiscordHelper(): DiscordHelper | null {
+  return state.discordHelper
+}
+
+function getIsDiscordMode(): boolean {
+  return isDiscordMode
 }
 
 function getProblemInfo(): any {
