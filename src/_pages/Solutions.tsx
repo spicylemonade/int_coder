@@ -586,6 +586,21 @@ const Solutions: React.FC<SolutionsProps> = ({
                 {solutionData && (
                   <>
                     <ContentSection
+                      title="Problem Statement"
+                      content={problemStatementData?.problem_statement}
+                      isLoading={!problemStatementData}
+                    />
+
+                    {problemStatementData?.quick_plan && (
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-semibold text-green-300">Quick Plan</h3>
+                        <p className="text-xs text-gray-200 leading-relaxed">
+                          {problemStatementData.quick_plan}
+                        </p>
+                      </div>
+                    )}
+
+                    <ContentSection
                       title={`My Thoughts (${COMMAND_KEY} + Arrow keys to scroll)`}
                       content={
                         thoughtsData && (
@@ -605,6 +620,13 @@ const Solutions: React.FC<SolutionsProps> = ({
                         )
                       }
                       isLoading={!thoughtsData}
+                    />
+
+                    <SolutionSection
+                      title="🎯 Final Solution (Gemini 3.0 Pro)"
+                      content={solutionData}
+                      isLoading={!solutionData}
+                      currentLanguage={currentLanguage}
                     />
 
                     {problemStatementData?.ideal_solution && (
@@ -630,13 +652,6 @@ const Solutions: React.FC<SolutionsProps> = ({
                         </div>
                       </div>
                     )}
-
-                    <SolutionSection
-                      title="🎯 Final Solution (Gemini 3.0 Pro)"
-                      content={solutionData}
-                      isLoading={!solutionData}
-                      currentLanguage={currentLanguage}
-                    />
 
                     <ComplexitySection
                       timeComplexity={timeComplexityData}
