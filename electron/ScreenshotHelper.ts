@@ -172,6 +172,18 @@ export class ScreenshotHelper {
       return buffer;
     } catch (error) {
       console.error("Error capturing screenshot:", error);
+      
+      // Check if this is a macOS permission error
+      if (process.platform === "darwin" && (error.message?.includes("screencapture") || error.code === "ENOENT")) {
+        throw new Error(
+          "Screen Recording permission denied. Please enable Screen Recording permissions:\n\n" +
+          "1. Go to System Preferences/Settings → Privacy & Security → Screen Recording\n" +
+          "2. Enable permission for this app (Electron or your app name)\n" +
+          "3. Restart the application\n\n" +
+          "Original error: " + error.message
+        );
+      }
+      
       throw new Error(`Failed to capture screenshot: ${error.message}`);
     }
   }

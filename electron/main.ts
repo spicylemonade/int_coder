@@ -506,6 +506,15 @@ function loadEnvVariables() {
 // Initialize application
 async function initializeApp() {
   try {
+    // Check for macOS Screen Recording permissions
+    if (process.platform === 'darwin') {
+      console.log('⚠️  macOS detected: Screen Recording permissions required');
+      console.log('📸 To enable screenshots:');
+      console.log('   1. Go to System Preferences → Privacy & Security → Screen Recording');
+      console.log('   2. Enable permission for this app');
+      console.log('   3. Restart the application if prompted');
+    }
+    
     // Set custom cache directory to prevent permission issues
     const appDataPath = path.join(app.getPath('appData'), 'interview-coder-v1')
     const sessionPath = path.join(appDataPath, 'session')
