@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, shell, ipcMain } from "electron"
+import { app, BrowserWindow, screen, shell, ipcMain, Menu } from "electron"
 import path from "path"
 import fs from "fs"
 import { initializeIpcHandlers } from "./ipcHandlers"
@@ -574,6 +574,42 @@ async function initializeApp() {
       isDev ? "development" : "production",
       "mode"
     )
+
+    // Remove default application menu to prevent Cmd+R from reloading
+    if (!isDev) {
+      Menu.setApplicationMenu(null)
+    } else {
+      // In dev, we might want to keep DevTools, but let's create a custom menu that doesn't have Reload
+      const menuTemplate: Electron.MenuItemConstructorOptions[] = [
+        {
+          label: 'Interview Coder',
+          submenu: [
+            { role: 'quit' }
+          ]
+        },
+        {
+          label: 'Edit',
+          submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { role: 'selectAll' }
+          ]
+        },
+        {
+          label: 'View',
+          submenu: [
+            { role: 'toggleDevTools' }
+          ]
+        }
+      ];
+      const menu = Menu.buildFromTemplate(menuTemplate);
+      Menu.setApplicationMenu(menu);
+    }
+
   } catch (error) {
     console.error("Failed to initialize application:", error)
     app.quit()
