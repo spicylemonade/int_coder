@@ -191,6 +191,7 @@ const Solutions: React.FC<SolutionsProps> = ({
   const [spaceComplexityData, setSpaceComplexityData] = useState<string | null>(
     null
   )
+  const [flashSolutionReady, setFlashSolutionReady] = useState(false)
 
   const [isTooltipVisible, setIsTooltipVisible] = useState(false)
   const [tooltipHeight, setTooltipHeight] = useState(0)
@@ -299,6 +300,22 @@ const Solutions: React.FC<SolutionsProps> = ({
         setThoughtsData(null)
         setTimeComplexityData(null)
         setSpaceComplexityData(null)
+        setFlashSolutionReady(false)
+      }),
+      window.electronAPI.onFlashSolutionReady((data: { ideal_solution: string }) => {
+        // Flash solution arrived first!
+        setFlashSolutionReady(true)
+        const currentProblemData = queryClient.getQueryData(["problem_statement"]) as ProblemStatementData | null
+        if (currentProblemData) {
+          queryClient.setQueryData(["problem_statement"], {
+            ...currentProblemData,
+            ideal_solution: data.ideal_solution
+          })
+          setProblemStatementData({
+            ...currentProblemData,
+            ideal_solution: data.ideal_solution
+          })
+        }
       }),
       window.electronAPI.onProblemExtracted((data) => {
         queryClient.setQueryData(["problem_statement"], data)
@@ -520,10 +537,47 @@ const Solutions: React.FC<SolutionsProps> = ({
                       </div>
                     )}
                     {problemStatementData && (
-                      <div className="mt-4 flex">
-                        <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-                          Generating solutions from both Gemini 2.5 Flash and 3.0 Pro...
-                        </p>
+                      <div className="space-y-3 mt-4">
+                        {/* Flash Solution Section */}
+                        <div className="space-y-2">
+                          <h3 className="text-sm font-semibold text-yellow-300">⚡ Quick Solution (Gemini 2.5 Flash)</h3>
+                          {flashSolutionReady && problemStatementData?.ideal_solution ? (
+                            <div className="relative">
+                              <SyntaxHighlighter
+                                language={currentLanguage === "golang" ? "go" : currentLanguage}
+                                style={dracula}
+                                customStyle={{
+                                  maxWidth: "100%",
+                                  margin: 0,
+                                  padding: "1rem",
+                                  fontSize: "0.75rem",
+                                  whiteSpace: "pre-wrap",
+                                  wordBreak: "break-all",
+                                  backgroundColor: "rgba(22, 27, 34, 0.5)"
+                                }}
+                                wrapLongLines={true}
+                              >
+                                {problemStatementData.ideal_solution}
+                              </SyntaxHighlighter>
+                            </div>
+                          ) : (
+                            <div className="flex">
+                              <p className="text-xs bg-gradient-to-r from-yellow-300 via-yellow-100 to-yellow-300 bg-clip-text text-transparent animate-pulse">
+                                Generating quick solution from Gemini 2.5 Flash...
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Pro Solution Section */}
+                        <div className="space-y-2">
+                          <h3 className="text-sm font-semibold text-blue-300">🎯 Final Solution (Gemini 3.0 Pro)</h3>
+                          <div className="flex">
+                            <p className="text-xs bg-gradient-to-r from-blue-300 via-blue-100 to-blue-300 bg-clip-text text-transparent animate-pulse">
+                              Generating comprehensive solution from Gemini 3.0 Pro...
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </>

@@ -797,22 +797,31 @@ Your solution should be efficient, well-commented, and handle edge cases.
             ],
           };
           
-          // Call both models in parallel
-          const [flashResponse, proResponse] = await Promise.all([
-            this.geminiClient.models.generateContent(flashRequest),
-            this.geminiClient.models.generateContent(proRequest)
-          ]);
+          // Start both requests but don't wait for both
+          const flashPromise = this.geminiClient.models.generateContent(flashRequest);
+          const proPromise = this.geminiClient.models.generateContent(proRequest);
           
+          // Wait for Flash first (faster) and send it immediately
+          const flashResponse = await flashPromise;
           const flashContent = flashResponse.text;
-          const proContent = proResponse.text;
           
-          // Use the Pro response as the main response, but store Flash for ideal_solution
-          responseContent = proContent;
-          
-          // Store the Flash response in problemInfo for display as "Ideal Solution"
+          // Store Flash solution and notify UI immediately
           if (this.deps.getProblemInfo()) {
             this.deps.getProblemInfo().ideal_solution = flashContent;
+            // Send flash solution to UI right away
+            if (mainWindow) {
+              mainWindow.webContents.send("flash-solution-ready", { 
+                ideal_solution: flashContent 
+              });
+            }
           }
+          
+          // Now wait for Pro (takes longer)
+          const proResponse = await proPromise;
+          const proContent = proResponse.text;
+          
+          // Use the Pro response as the main response
+          responseContent = proContent;
           
           if (!responseContent) {
             throw new Error("Empty response from Gemini API");

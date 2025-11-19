@@ -129,6 +129,13 @@ const electronAPI = {
       )
     }
   },
+  onFlashSolutionReady: (callback: (data: { ideal_solution: string }) => void) => {
+    const subscription = (_: any, data: { ideal_solution: string }) => callback(data)
+    ipcRenderer.on("flash-solution-ready", subscription)
+    return () => {
+      ipcRenderer.removeListener("flash-solution-ready", subscription)
+    }
+  },
   onSolutionSuccess: (callback: (data: any) => void) => {
     const subscription = (_: any, data: any) => callback(data)
     ipcRenderer.on(PROCESSING_EVENTS.SOLUTION_SUCCESS, subscription)
