@@ -50,9 +50,9 @@ const modelCategories: ModelCategory[] = [
     ],
     geminiModels: [
       {
-        id: "gemini-2.5-pro",
-        name: "Gemini 2.5 Pro",
-        description: "Best overall performance for problem extraction"
+        id: "gemini-3-pro-preview",
+        name: "Gemini 3.0 Pro Preview",
+        description: "Most capable model for complex problems"
       },
       {
         id: "gemini-2.5-flash",
@@ -96,9 +96,9 @@ const modelCategories: ModelCategory[] = [
     ],
     geminiModels: [
       {
-        id: "gemini-2.5-pro",
-        name: "Gemini 2.5 Pro",
-        description: "Strong overall performance for coding tasks"
+        id: "gemini-3-pro-preview",
+        name: "Gemini 3.0 Pro Preview",
+        description: "Most capable model for complex coding tasks"
       },
       {
         id: "gemini-2.5-flash",
@@ -142,9 +142,9 @@ const modelCategories: ModelCategory[] = [
     ],
     geminiModels: [
       {
-        id: "gemini-2.5-pro",
-        name: "Gemini 2.5 Pro",
-        description: "Best for analyzing code and error messages"
+        id: "gemini-3-pro-preview",
+        name: "Gemini 3.0 Pro Preview",
+        description: "Most capable for analyzing code and error messages"
       },
       {
         id: "gemini-2.5-flash",
@@ -244,9 +244,9 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
       setSolutionModel("gpt-4o");
       setDebuggingModel("gpt-4o");
     } else if (provider === "gemini") {
-      setExtractionModel("gemini-2.5-pro");
-      setSolutionModel("gemini-2.5-pro");
-      setDebuggingModel("gemini-2.5-pro");
+      setExtractionModel("gemini-3-pro-preview");
+      setSolutionModel("gemini-3-pro-preview");
+      setDebuggingModel("gemini-3-pro-preview");
     } else if (provider === "anthropic") {
       setExtractionModel("claude-3-7-sonnet-20250219");
       setSolutionModel("claude-3-7-sonnet-20250219");
