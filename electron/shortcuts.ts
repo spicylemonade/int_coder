@@ -15,7 +15,6 @@ export class ShortcutsHelper {
     
     let currentOpacity = mainWindow.getOpacity();
     let newOpacity = Math.max(0.1, Math.min(1.0, currentOpacity + delta));
-    console.log(`Adjusting opacity from ${currentOpacity} to ${newOpacity}`);
     
     mainWindow.setOpacity(newOpacity);
     
@@ -25,7 +24,7 @@ export class ShortcutsHelper {
       config.opacity = newOpacity;
       configHelper.saveConfig(config);
     } catch (error) {
-      console.error('Error saving opacity to config:', error);
+      // Silent fail to avoid EIO errors on macOS
     }
     
     // If we're making the window visible, also make sure it's shown and interaction is enabled
@@ -38,7 +37,6 @@ export class ShortcutsHelper {
     globalShortcut.register("CommandOrControl+H", async () => {
       const mainWindow = this.deps.getMainWindow()
       if (mainWindow) {
-        console.log("Taking screenshot...")
         try {
           const screenshotPath = await this.deps.takeScreenshot()
           const preview = await this.deps.getImagePreview(screenshotPath)
@@ -47,7 +45,8 @@ export class ShortcutsHelper {
             preview
           })
         } catch (error) {
-          console.error("Error capturing screenshot:", error)
+          // Only log errors, not every screenshot action
+          console.error("Screenshot error:", error.message)
         }
       }
     })
@@ -57,17 +56,11 @@ export class ShortcutsHelper {
     })
 
     globalShortcut.register("CommandOrControl+R", () => {
-      console.log(
-        "Command + R pressed. Canceling requests and resetting queues..."
-      )
-
       // Cancel ongoing API requests
       this.deps.processingHelper?.cancelOngoingRequests()
 
       // Clear both screenshot queues
       this.deps.clearQueues()
-
-      console.log("Cleared queues.")
 
       // Update the view state to 'queue'
       this.deps.setView("queue")
@@ -80,51 +73,42 @@ export class ShortcutsHelper {
       }
     })
 
-    // New shortcuts for moving the window
+    // New shortcuts for moving the window (no logging to avoid EIO errors)
     globalShortcut.register("CommandOrControl+Left", () => {
-      console.log("Command/Ctrl + Left pressed. Moving window left.")
       this.deps.moveWindowLeft()
     })
 
     globalShortcut.register("CommandOrControl+Right", () => {
-      console.log("Command/Ctrl + Right pressed. Moving window right.")
       this.deps.moveWindowRight()
     })
 
     globalShortcut.register("CommandOrControl+Down", () => {
-      console.log("Command/Ctrl + down pressed. Moving window down.")
       this.deps.moveWindowDown()
     })
 
     globalShortcut.register("CommandOrControl+Up", () => {
-      console.log("Command/Ctrl + Up pressed. Moving window Up.")
       this.deps.moveWindowUp()
     })
 
     globalShortcut.register("CommandOrControl+B", () => {
-      console.log("Command/Ctrl + B pressed. Toggling window visibility.")
       this.deps.toggleMainWindow()
     })
 
     globalShortcut.register("CommandOrControl+Q", () => {
-      console.log("Command/Ctrl + Q pressed. Quitting application.")
       app.quit()
     })
 
-    // Adjust opacity shortcuts
+    // Adjust opacity shortcuts (no logging to avoid EIO errors)
     globalShortcut.register("CommandOrControl+[", () => {
-      console.log("Command/Ctrl + [ pressed. Decreasing opacity.")
       this.adjustOpacity(-0.1)
     })
 
     globalShortcut.register("CommandOrControl+]", () => {
-      console.log("Command/Ctrl + ] pressed. Increasing opacity.")
       this.adjustOpacity(0.1)
     })
     
-    // Zoom controls
+    // Zoom controls (no logging to avoid EIO errors)
     globalShortcut.register("CommandOrControl+-", () => {
-      console.log("Command/Ctrl + - pressed. Zooming out.")
       const mainWindow = this.deps.getMainWindow()
       if (mainWindow) {
         const currentZoom = mainWindow.webContents.getZoomLevel()
@@ -133,7 +117,6 @@ export class ShortcutsHelper {
     })
     
     globalShortcut.register("CommandOrControl+0", () => {
-      console.log("Command/Ctrl + 0 pressed. Resetting zoom.")
       const mainWindow = this.deps.getMainWindow()
       if (mainWindow) {
         mainWindow.webContents.setZoomLevel(0)
@@ -141,7 +124,6 @@ export class ShortcutsHelper {
     })
     
     globalShortcut.register("CommandOrControl+=", () => {
-      console.log("Command/Ctrl + = pressed. Zooming in.")
       const mainWindow = this.deps.getMainWindow()
       if (mainWindow) {
         const currentZoom = mainWindow.webContents.getZoomLevel()
@@ -151,7 +133,6 @@ export class ShortcutsHelper {
     
     // Delete last screenshot shortcut
     globalShortcut.register("CommandOrControl+L", () => {
-      console.log("Command/Ctrl + L pressed. Deleting last screenshot.")
       const mainWindow = this.deps.getMainWindow()
       if (mainWindow) {
         // Send an event to the renderer to delete the last screenshot
