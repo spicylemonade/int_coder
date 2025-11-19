@@ -654,7 +654,7 @@ function getExtraScreenshotQueue(): string[] {
 function clearQueues(): void {
   state.screenshotHelper?.clearQueues()
   state.problemInfo = null
-  setView("queue")
+  // Don't change the view - let user stay on current page
 }
 
 async function takeScreenshot(): Promise<string> {

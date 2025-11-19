@@ -62,10 +62,9 @@ export class ShortcutsHelper {
       // Clear both screenshot queues
       this.deps.clearQueues()
 
-      // Update the view state to 'queue'
-      this.deps.setView("queue")
+      // Don't change the view - just clear data and stay on current page
 
-      // Notify renderer process to switch view to 'queue'
+      // Notify renderer process to clear data
       const mainWindow = this.deps.getMainWindow()
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("reset-view")

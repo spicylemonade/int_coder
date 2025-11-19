@@ -260,8 +260,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
       // Clear all queues immediately
       deps.clearQueues()
 
-      // Reset view to queue
-      deps.setView("queue")
+      // Don't change the view - let user stay on current page
 
       // Get main window and send reset events
       const mainWindow = deps.getMainWindow()

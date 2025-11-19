@@ -114,7 +114,7 @@ const SubscribedApp: React.FC<SubscribedAppProps> = ({
         queryClient.removeQueries({
           queryKey: ["problem_statement"]
         })
-        setView("queue")
+        // Don't change view - just clear data so user stays on current page
       }),
       window.electronAPI.onResetView(() => {
         queryClient.setQueryData(["problem_statement"], null)
