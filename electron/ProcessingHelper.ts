@@ -457,14 +457,14 @@ export class ProcessingHelper {
         const messages = [
           {
             role: "system" as const, 
-            content: "You are a coding challenge interpreter. Analyze the screenshot of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem). Just return the structured JSON without any other text."
+            content: "You are a coding challenge interpreter. Analyze the screenshot of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem with clear comments explaining what each part does). Just return the structured JSON without any other text."
           },
           {
             role: "user" as const,
             content: [
               {
                 type: "text" as const, 
-                text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt. Return in JSON format with fields: problem_statement, constraints, example_input, example_output, ideal_solution (code that attempts to solve the problem). Preferred coding language we gonna use for this problem is ${language}.`
+                text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt with helpful comments. Return in JSON format with fields: problem_statement, constraints, example_input, example_output, ideal_solution (well-commented code that attempts to solve the problem - add comments to explain what the code is doing). Preferred coding language we gonna use for this problem is ${language}.`
               },
               ...imageDataList.map(data => ({
                 type: "image_url" as const,
@@ -508,7 +508,7 @@ export class ProcessingHelper {
           // Create message content with text and images
           const contents = [
             {
-              text: `You are a coding challenge interpreter. Analyze the screenshots of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem). Just return the structured JSON without any other text. Preferred coding language we gonna use for this problem is ${language}.`
+              text: `You are a coding challenge interpreter. Analyze the screenshots of the coding problem and extract all relevant information. Return the information in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (a quick code attempt to solve the problem with clear comments explaining what each part does). Make sure the ideal_solution code includes helpful comments so the user knows what the code is doing. Just return the structured JSON without any other text. Preferred coding language we gonna use for this problem is ${language}.`
             },
             ...imageDataList.map(data => ({
               inlineData: {
@@ -567,7 +567,7 @@ export class ProcessingHelper {
               content: [
                 {
                   type: "text" as const,
-                  text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt. Return in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (code that attempts to solve the problem). Preferred coding language is ${language}.`
+                  text: `Extract the coding problem details from these screenshots and also generate a quick code solution attempt with helpful comments. Return in JSON format with these fields: problem_statement, constraints, example_input, example_output, ideal_solution (well-commented code that attempts to solve the problem - add comments to explain what the code is doing). Preferred coding language is ${language}.`
                 },
                 ...imageDataList.map(data => ({
                   type: "image" as const,
