@@ -289,6 +289,15 @@ async function createWindow(): Promise<void> {
 
   // Configure window behavior
   state.mainWindow.webContents.setZoomFactor(1)
+  
+  // Prevent Cmd+R from reloading the page (our global shortcut handles reset instead)
+  state.mainWindow.webContents.on('before-input-event', (event, input) => {
+    if ((input.control || input.meta) && input.key.toLowerCase() === 'r') {
+      event.preventDefault()
+      console.log('Blocked Cmd+R page reload - using custom reset handler instead')
+    }
+  })
+  
   if (isDev) {
     state.mainWindow.webContents.openDevTools()
   }
