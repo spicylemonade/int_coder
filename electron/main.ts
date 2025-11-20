@@ -690,7 +690,9 @@ function getExtraScreenshotQueue(): string[] {
 function clearQueues(): void {
   state.screenshotHelper?.clearQueues()
   state.problemInfo = null
-  // Don't change the view - let user stay on current page
+  // Reset the internal view state to queue so new screenshots go to the main queue
+  // This doesn't affect the frontend UI since we removed the navigation there
+  setView("queue")
 }
 
 async function takeScreenshot(): Promise<string> {
