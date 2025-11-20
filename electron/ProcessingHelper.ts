@@ -217,9 +217,12 @@ export class ProcessingHelper {
     }
 
     const view = this.deps.getView()
-    console.log("Processing screenshots in view:", view)
+    const problemInfo = this.deps.getProblemInfo()
+    console.log("Processing screenshots in view:", view, "with problem info:", !!problemInfo)
 
-    if (view === "queue") {
+    // If there's no problem info (e.g., after reset), always do initial processing
+    // regardless of the view state
+    if (view === "queue" || !problemInfo) {
       mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.INITIAL_START)
       const screenshotQueue = this.screenshotHelper.getScreenshotQueue()
       console.log("Processing main queue screenshots:", screenshotQueue)
