@@ -192,6 +192,7 @@ const Solutions: React.FC<SolutionsProps> = ({
     null
   )
   const [flashSolutionReady, setFlashSolutionReady] = useState(false)
+  const [apiProvider, setApiProvider] = useState<string>("gemini")
 
   const [isTooltipVisible, setIsTooltipVisible] = useState(false)
   const [tooltipHeight, setTooltipHeight] = useState(0)
@@ -206,6 +207,19 @@ const Solutions: React.FC<SolutionsProps> = ({
   }
 
   const [extraScreenshots, setExtraScreenshots] = useState<Screenshot[]>([])
+
+  // Load API provider on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await window.electronAPI.getConfig()
+        setApiProvider(config.apiProvider || "gemini")
+      } catch (error) {
+        console.error("Failed to load API provider:", error)
+      }
+    }
+    loadConfig()
+  }, [])
 
   useEffect(() => {
     const fetchScreenshots = async () => {
@@ -540,7 +554,9 @@ const Solutions: React.FC<SolutionsProps> = ({
                       <div className="space-y-3 mt-4">
                         {/* Flash Solution Section */}
                         <div className="space-y-2">
-                          <h3 className="text-sm font-semibold text-yellow-300">⚡ Quick Solution (Gemini 2.5 Flash)</h3>
+                          <h3 className="text-sm font-semibold text-yellow-300">
+                            ⚡ Quick Solution ({apiProvider === "openrouter" ? "GPT-5.1" : apiProvider === "gemini" ? "Gemini 2.5 Flash" : "Fast Model"})
+                          </h3>
                           {flashSolutionReady && problemStatementData?.ideal_solution ? (
                             <div className="relative">
                               <SyntaxHighlighter
@@ -563,7 +579,7 @@ const Solutions: React.FC<SolutionsProps> = ({
                           ) : (
                             <div className="flex">
                               <p className="text-xs bg-gradient-to-r from-yellow-300 via-yellow-100 to-yellow-300 bg-clip-text text-transparent animate-pulse">
-                                Generating quick solution from Gemini 2.5 Flash...
+                                Generating quick solution from {apiProvider === "openrouter" ? "GPT-5.1" : apiProvider === "gemini" ? "Gemini 2.5 Flash" : "fast model"}...
                               </p>
                             </div>
                           )}
@@ -631,7 +647,9 @@ const Solutions: React.FC<SolutionsProps> = ({
 
                     {problemStatementData?.ideal_solution && (
                       <div className="space-y-2">
-                        <h3 className="text-sm font-semibold text-yellow-300">⚡ Quick Solution (Gemini 2.5 Flash)</h3>
+                        <h3 className="text-sm font-semibold text-yellow-300">
+                          ⚡ Quick Solution ({apiProvider === "openrouter" ? "GPT-5.1" : apiProvider === "gemini" ? "Gemini 2.5 Flash" : "Fast Model"})
+                        </h3>
                         <div className="relative">
                           <SyntaxHighlighter
                             language={currentLanguage === "golang" ? "go" : currentLanguage}

@@ -68,6 +68,27 @@ export class ProcessingHelper {
           this.anthropicClient = null;
           console.warn("No API key available, OpenAI client not initialized");
         }
+      } else if (config.apiProvider === "openrouter") {
+        if (config.apiKey) {
+          this.openaiClient = new OpenAI({ 
+            apiKey: config.apiKey,
+            baseURL: "https://openrouter.ai/api/v1",
+            defaultHeaders: {
+              "HTTP-Referer": "https://github.com/ibttf/interview-coder", // Site URL for rankings on openrouter.ai.
+              "X-Title": "Interview Coder", // Site title for rankings on openrouter.ai.
+            },
+            timeout: 60000,
+            maxRetries: 2
+          });
+          this.geminiClient = null;
+          this.anthropicClient = null;
+          console.log("OpenRouter client initialized successfully");
+        } else {
+          this.openaiClient = null;
+          this.geminiClient = null;
+          this.anthropicClient = null;
+          console.warn("No API key available, OpenRouter client not initialized");
+        }
       } else if (config.apiProvider === "gemini"){
         // Gemini client initialization
         this.openaiClient = null;
@@ -443,15 +464,15 @@ export class ProcessingHelper {
 
       let problemInfo;
       
-      if (config.apiProvider === "openai") {
-        // Verify OpenAI client
+      if (config.apiProvider === "openai" || config.apiProvider === "openrouter") {
+        // Verify OpenAI/OpenRouter client
         if (!this.openaiClient) {
           this.initializeAIClient(); // Try to reinitialize
           
           if (!this.openaiClient) {
             return {
               success: false,
-              error: "OpenAI API key not configured or invalid. Please check your settings."
+              error: `${config.apiProvider === 'openrouter' ? 'OpenRouter' : 'OpenAI'} API key not configured or invalid. Please check your settings.`
             };
           }
         }
@@ -478,12 +499,19 @@ export class ProcessingHelper {
         ];
 
         // Send to OpenAI Vision API
-        const extractionResponse = await this.openaiClient.chat.completions.create({
+        const extractionConfig: any = {
           model: config.extractionModel || "gpt-4o",
-          messages: messages,
-          max_tokens: 4000,
-          temperature: 0.2
-        });
+          messages: messages
+        };
+        
+        // Add reasoning configuration for OpenRouter
+        if (config.apiProvider === "openrouter") {
+          extractionConfig.reasoning = {
+            effort: "low" // Fast extraction for GPT-5.1
+          };
+        }
+        
+        const extractionResponse = await this.openaiClient.chat.completions.create(extractionConfig);
 
         // Parse the response
         try {
@@ -760,12 +788,97 @@ Your solution should be efficient, well-commented, and handle edge cases.
           messages: [
             { role: "system", content: "You are an expert coding interview assistant. Provide clear, optimal solutions with detailed explanations." },
             { role: "user", content: promptText }
-          ],
-          max_tokens: 4000,
-          temperature: 0.2
+          ]
         });
 
         responseContent = solutionResponse.choices[0].message.content;
+      } else if (config.apiProvider === "openrouter") {
+        // OpenRouter processing - call BOTH models in parallel (Quick & High)
+        if (!this.openaiClient) {
+          return {
+            success: false,
+            error: "OpenRouter API key not configured. Please check your settings."
+          };
+        }
+        
+        try {
+          // Quick solution (Flash equivalent) - openai/gpt-5.1
+          const quickModel = "openai/gpt-5.1"; // User specified
+          // Final solution (Pro equivalent) - google/gemini-3-pro-preview
+          const finalModel = config.solutionModel || "google/gemini-3-pro-preview"; 
+
+          // Prepare requests
+          const quickPromise = this.openaiClient.chat.completions.create({
+            model: quickModel,
+            messages: [
+              { role: "system", content: "You are an expert coding interview assistant. Provide a quick, working solution with comments for this problem." },
+              { role: "user", content: promptText }
+            ],
+            // @ts-ignore - OpenRouter reasoning support
+            reasoning: {
+              effort: "low" // Fast response for GPT-5.1
+            }
+          });
+          
+          const finalPromise = this.openaiClient.chat.completions.create({
+             model: finalModel,
+             messages: [
+               { role: "system", content: "You are an expert coding interview assistant. Provide a comprehensive, optimal solution for this problem." },
+               { role: "user", content: `
+CRITICAL: Add a comment after ALMOST EVERY LINE of code explaining what that line does. Your code should be extremely well-documented with inline comments throughout.
+
+Include detailed comments explaining:
+- What each line/section does
+- Why you chose this approach
+- Time/space complexity considerations
+- Edge cases being handled
+- Any important algorithmic insights
+- Variable purposes and meanings
+
+Make your comments thorough, educational, and frequent. A beginner should be able to understand every step by reading your comments.
+
+${promptText}` }
+             ],
+             // @ts-ignore - OpenRouter reasoning support
+             reasoning: {
+               effort: "high" // Deep reasoning for Gemini 3.0 Pro
+             }
+          });
+          
+          // Wait for Quick solution
+          try {
+            const quickResponse = await quickPromise;
+            const quickContent = quickResponse.choices[0]?.message?.content || "";
+            
+             // Store Quick solution and notify UI immediately
+            if (this.deps.getProblemInfo() && quickContent) {
+              this.deps.getProblemInfo().ideal_solution = quickContent;
+              // Send flash solution to UI right away
+              if (mainWindow) {
+                mainWindow.webContents.send("flash-solution-ready", { 
+                  ideal_solution: quickContent 
+                });
+              }
+            }
+          } catch (err) {
+            console.warn("Quick solution failed, continuing to final solution:", err);
+          }
+
+          // Wait for Final solution
+          const finalResponse = await finalPromise;
+          responseContent = finalResponse.choices[0]?.message?.content;
+          
+          if (!responseContent) {
+             throw new Error("Empty response from OpenRouter API");
+          }
+
+        } catch (error) {
+          console.error("Error using OpenRouter API for solution:", error);
+          return {
+            success: false,
+            error: "Failed to generate solution with OpenRouter. Please check your API key or try again later."
+          };
+        }
       } else if (config.apiProvider === "gemini")  {
         // Gemini processing - call BOTH models in parallel
         if (!this.geminiClient) {
@@ -1025,11 +1138,11 @@ ${promptText}`
       
       let debugContent;
       
-      if (config.apiProvider === "openai") {
+      if (config.apiProvider === "openai" || config.apiProvider === "openrouter") {
         if (!this.openaiClient) {
           return {
             success: false,
-            error: "OpenAI API key not configured. Please check your settings."
+            error: `${config.apiProvider === 'openrouter' ? 'OpenRouter' : 'OpenAI'} API key not configured. Please check your settings.`
           };
         }
         
@@ -1082,12 +1195,20 @@ If you include code examples, use proper markdown code blocks with language spec
           });
         }
 
-        const debugResponse = await this.openaiClient.chat.completions.create({
+        const debugConfig: any = {
           model: config.debuggingModel || "gpt-4o",
-          messages: messages,
-          max_tokens: 4000,
-          temperature: 0.2
-        });
+          messages: messages
+        };
+        
+        // Add reasoning configuration for OpenRouter
+        if (config.apiProvider === "openrouter") {
+          // Use high reasoning if using Gemini 3.0 Pro, low if using GPT-5.1
+          debugConfig.reasoning = {
+            effort: config.debuggingModel?.includes("gemini-3") ? "high" : "low"
+          };
+        }
+
+        const debugResponse = await this.openaiClient.chat.completions.create(debugConfig);
         
         debugContent = debugResponse.choices[0].message.content;
       } else if (config.apiProvider === "gemini")  {
